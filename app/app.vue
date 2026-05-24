@@ -125,10 +125,30 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 
-const isAuthenticated = ref(false);
-const user = ref(null);
-const isSidebarOpen = ref(true); // Default open for desktop
+// 1. SSR Auth Fetch (prevents flicker and logout on refresh)
+const headers = useRequestHeaders(['cookie']);
+const { data: session } = await useFetch('/api/auth/session', { headers });
 
+const isAuthenticated = ref(session.value?.authenticated || false);
+const user = ref(session.value?.user || null);
+const isSidebarOpen = ref(true);
+
+// 2. Client-side window logic
+if (typeof window !== 'undefined') {
+  isSidebarOpen.value = window.innerWidth >= 768;
+  if (isAuthenticated.value && window.innerWidth < 768) {
+    isSidebarOpen.value = false;
+  }
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 768 && isAuthenticated.value) {
+      isSidebarOpen.value = true;
+    } else {
+      isSidebarOpen.value = false;
+    }
+  });
+}
+
+// 3. Form States
 const loginForm = ref({ username: '', password: '' });
 const authLoading = ref(false);
 const authMessage = ref('');
@@ -164,40 +184,7 @@ const loading = ref(false);
 const message = ref('');
 const isError = ref(false);
 
-const checkSession = async () => {
-  try {
-    const res = await $fetch('/api/auth/session');
-    if (res.authenticated) {
-      isAuthenticated.value = true;
-      user.value = res.user;
-      
-      // Auto close sidebar on mobile initial load
-      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        isSidebarOpen.value = false;
-      }
-    }
-  } catch (e) {
-    console.error('Session check failed', e);
-  }
-};
-
-onMounted(() => {
-  checkSession();
-  
-  // Set initial sidebar state based on screen size
-  if (typeof window !== 'undefined') {
-    isSidebarOpen.value = window.innerWidth >= 768;
-    
-    window.addEventListener('resize', () => {
-      if (window.innerWidth >= 768 && isAuthenticated.value) {
-        isSidebarOpen.value = true;
-      } else {
-        isSidebarOpen.value = false;
-      }
-    });
-  }
-});
-
+// 4. API Methods
 const login = async () => {
   authLoading.value = true;
   authMessage.value = '';
