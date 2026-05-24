@@ -131,14 +131,13 @@ const { data: session } = await useFetch('/api/auth/session', { headers });
 
 const isAuthenticated = ref(session.value?.authenticated || false);
 const user = ref(session.value?.user || null);
-const isSidebarOpen = ref(true);
+const isSidebarOpen = ref(false);
 
-// 2. Client-side window logic
-if (typeof window !== 'undefined') {
-  isSidebarOpen.value = window.innerWidth >= 768;
-  if (isAuthenticated.value && window.innerWidth < 768) {
-    isSidebarOpen.value = false;
+onMounted(() => {
+  if (window.innerWidth >= 768 && isAuthenticated.value) {
+    isSidebarOpen.value = true;
   }
+
   window.addEventListener('resize', () => {
     if (window.innerWidth >= 768 && isAuthenticated.value) {
       isSidebarOpen.value = true;
@@ -146,7 +145,7 @@ if (typeof window !== 'undefined') {
       isSidebarOpen.value = false;
     }
   });
-}
+});
 
 // 3. Form States
 const loginForm = ref({ username: '', password: '' });
