@@ -70,9 +70,9 @@ export default defineEventHandler(async (event) => {
       });
       
       // Add headers to the new tab (Added User column)
-      await sheets.spreadsheets.values.append({
+      await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${sheetName}!A1`,
+        range: `${sheetName}!A1:E1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [['Date', 'Category', 'Amount', 'Description', 'User']]
