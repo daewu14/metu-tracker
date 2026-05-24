@@ -1,101 +1,124 @@
 <template>
-  <div class="app-container">
-    <div class="glass-card">
-      
-      <!-- Top Navigation -->
-      <header class="top-nav">
+  <div class="dashboard-layout" :class="{ 'sidebar-open': isSidebarOpen }">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar" v-if="isAuthenticated">
+      <div class="sidebar-header">
         <div class="logo">
-          <h1>Metu Tracker</h1>
+          <h2>Metu Tracker</h2>
         </div>
-        <button v-if="isAuthenticated" @click="isDrawerOpen = true" class="profile-btn" aria-label="Open Profile">
-          <div class="avatar">{{ user?.username.charAt(0).toUpperCase() }}</div>
+        <button class="close-sidebar-btn d-mobile" @click="isSidebarOpen = false">✕</button>
+      </div>
+      
+      <div class="sidebar-content">
+        <div class="profile-info">
+          <div class="avatar large">{{ user?.username.charAt(0).toUpperCase() }}</div>
+          <p class="username">@{{ user?.username }}</p>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button @click="logoutAndClose" class="logout-btn">
+          Logout
         </button>
+      </div>
+    </aside>
+
+    <!-- MOBILE OVERLAY -->
+    <div v-if="isAuthenticated && isSidebarOpen" class="sidebar-overlay d-mobile" @click="isSidebarOpen = false"></div>
+
+    <!-- MAIN AREA -->
+    <main class="main-area">
+      <!-- TOP NAV -->
+      <header class="top-nav">
+        <div class="nav-left">
+          <button v-if="isAuthenticated" @click="isSidebarOpen = !isSidebarOpen" class="toggle-btn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <h1 class="mobile-title" v-if="!isAuthenticated">Metu Tracker</h1>
+        </div>
       </header>
 
-      <!-- DRAWER OVERLAY & MENU -->
-      <div v-if="isDrawerOpen" class="drawer-overlay" @click="isDrawerOpen = false"></div>
-      <div class="drawer" :class="{ 'drawer-open': isDrawerOpen }">
-        <div class="drawer-header">
-          <h2>Profile</h2>
-          <button class="close-btn" @click="isDrawerOpen = false">✕</button>
-        </div>
-        <div class="drawer-content">
-          <div class="profile-info">
-            <div class="avatar large">{{ user?.username.charAt(0).toUpperCase() }}</div>
-            <p class="username">@{{ user?.username }}</p>
+      <div class="app-container">
+        <div class="glass-card">
+          
+          <!-- LOGIN FORM -->
+          <div v-if="!isAuthenticated" class="auth-section">
+            <div class="header-text">
+              <h2>Welcome Back</h2>
+              <p>Please login to continue</p>
+            </div>
+            <form @submit.prevent="login" class="expense-form">
+              <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" v-model="loginForm.username" required />
+              </div>
+              <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" v-model="loginForm.password" required />
+              </div>
+              <button type="submit" :disabled="authLoading" class="submit-btn">
+                <span v-if="authLoading">Logging in...</span>
+                <span v-else>Login</span>
+              </button>
+              <div v-if="authMessage" class="message error">
+                {{ authMessage }}
+              </div>
+            </form>
           </div>
-          <button @click="logoutAndClose" class="logout-btn">
-            Logout
-          </button>
+
+          <!-- EXPENSE FORM -->
+          <div v-else>
+            <div class="header-text d-mobile" style="margin-bottom: 20px;">
+              <h2>Add Expense</h2>
+            </div>
+            <form @submit.prevent="submitExpense" class="expense-form">
+              <div class="form-group">
+                <label for="date">Date & Time</label>
+                <input type="datetime-local" id="date" v-model="form.date" required />
+              </div>
+
+              <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" v-model="form.category" required>
+                  <option value="" disabled>Select category</option>
+                  <option value="Food & Dining">Food & Dining</option>
+                  <option value="Transportation">Transportation</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Bills & Utilities">Bills & Utilities</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="amount">Amount (Rp)</label>
+                <input type="tel" id="amount" :value="formattedAmount" @input="onAmountInput" placeholder="0" required />
+              </div>
+
+              <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" v-model="form.description" placeholder="What did you buy?" rows="3"></textarea>
+              </div>
+
+              <button type="submit" :disabled="loading" class="submit-btn">
+                <span v-if="loading">Saving...</span>
+                <span v-else>Save Expense</span>
+              </button>
+
+              <div v-if="message" :class="['message', isError ? 'error' : 'success']">
+                {{ message }}
+              </div>
+            </form>
+          </div>
+
         </div>
       </div>
-
-      <div class="header-text" v-if="!isAuthenticated">
-        <p>Please login to continue</p>
-      </div>
-
-      <!-- LOGIN FORM -->
-      <form v-if="!isAuthenticated" @submit.prevent="login" class="expense-form">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input type="text" id="username" v-model="loginForm.username" required />
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" v-model="loginForm.password" required />
-        </div>
-        <button type="submit" :disabled="authLoading" class="submit-btn">
-          <span v-if="authLoading">Logging in...</span>
-          <span v-else>Login</span>
-        </button>
-        <div v-if="authMessage" class="message error">
-          {{ authMessage }}
-        </div>
-      </form>
-
-      <!-- EXPENSE FORM -->
-      <div v-else>
-        <form @submit.prevent="submitExpense" class="expense-form">
-          <div class="form-group">
-            <label for="date">Date & Time</label>
-            <input type="datetime-local" id="date" v-model="form.date" required />
-          </div>
-
-          <div class="form-group">
-            <label for="category">Category</label>
-            <select id="category" v-model="form.category" required>
-              <option value="" disabled>Select category</option>
-              <option value="Food & Dining">Food & Dining</option>
-              <option value="Transportation">Transportation</option>
-              <option value="Shopping">Shopping</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Bills & Utilities">Bills & Utilities</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="amount">Amount (Rp)</label>
-            <input type="tel" id="amount" :value="formattedAmount" @input="onAmountInput" placeholder="0" required />
-          </div>
-
-          <div class="form-group">
-            <label for="description">Description</label>
-            <textarea id="description" v-model="form.description" placeholder="What did you buy?" rows="3"></textarea>
-          </div>
-
-          <button type="submit" :disabled="loading" class="submit-btn">
-            <span v-if="loading">Saving...</span>
-            <span v-else>Save Expense</span>
-          </button>
-
-          <div v-if="message" :class="['message', isError ? 'error' : 'success']">
-            {{ message }}
-          </div>
-        </form>
-      </div>
-
-    </div>
+    </main>
   </div>
 </template>
 
@@ -104,7 +127,7 @@ import { ref, onMounted } from 'vue';
 
 const isAuthenticated = ref(false);
 const user = ref(null);
-const isDrawerOpen = ref(false);
+const isSidebarOpen = ref(true); // Default open for desktop
 
 const loginForm = ref({ username: '', password: '' });
 const authLoading = ref(false);
@@ -147,6 +170,11 @@ const checkSession = async () => {
     if (res.authenticated) {
       isAuthenticated.value = true;
       user.value = res.user;
+      
+      // Auto close sidebar on mobile initial load
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        isSidebarOpen.value = false;
+      }
     }
   } catch (e) {
     console.error('Session check failed', e);
@@ -155,6 +183,19 @@ const checkSession = async () => {
 
 onMounted(() => {
   checkSession();
+  
+  // Set initial sidebar state based on screen size
+  if (typeof window !== 'undefined') {
+    isSidebarOpen.value = window.innerWidth >= 768;
+    
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 768 && isAuthenticated.value) {
+        isSidebarOpen.value = true;
+      } else {
+        isSidebarOpen.value = false;
+      }
+    });
+  }
 });
 
 const login = async () => {
@@ -168,6 +209,10 @@ const login = async () => {
     isAuthenticated.value = true;
     user.value = res.user;
     loginForm.value.password = '';
+    
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      isSidebarOpen.value = true;
+    }
   } catch (error) {
     authMessage.value = error.data?.statusMessage || 'Invalid credentials';
   } finally {
@@ -180,7 +225,7 @@ const logoutAndClose = async () => {
     await $fetch('/api/auth/logout', { method: 'POST' });
     isAuthenticated.value = false;
     user.value = null;
-    isDrawerOpen.value = false;
+    isSidebarOpen.value = false;
   } catch (error) {
     console.error('Logout failed', error);
   }
