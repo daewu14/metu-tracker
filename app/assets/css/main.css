@@ -49,13 +49,13 @@ body {
 
 @media (min-width: 481px) {
   .app-container {
-    padding: 60px 20px;
-    display: block;
-    min-height: auto;
+    padding: 40px 20px;
+    /* keeps flex-direction: column from base */
   }
   
   .glass-card {
-    margin: 0 auto;
+    flex: none;
+    margin: auto; /* Magic centering vertically and horizontally without scroll cutoff */
     width: 100%;
     max-width: 480px;
     background: var(--card-bg);
